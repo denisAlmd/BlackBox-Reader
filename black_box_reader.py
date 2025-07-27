@@ -22,6 +22,7 @@ def content(df,data):
     st.dataframe(df)
 
     st.write(f'Initial and final odometer: {df["Odômetro"].iloc[0]:.2f} - {df["Odômetro"].iloc[-1]:.2f}')
+    st.write(f'Distance traveled: {df["Odômetro"].iloc[-1] - df["Odômetro"].iloc[0]:.2f} km')
     if data['negative_odometer']:
         st.warning("Negative odometer detected!")
         
