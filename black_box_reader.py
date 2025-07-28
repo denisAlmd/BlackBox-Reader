@@ -1,5 +1,8 @@
 from utils_pandas.read_blackbox_file import read_blackbox_file as rbbf
+from utils_pandas.read_trip_blackbox import read_trip_blackbox as rtb
 import streamlit as st
+
+from utils_pandas.read_trip_blackbox import read_trip_blackbox
 
 st.set_page_config(
     page_title="File Reader",
@@ -16,6 +19,11 @@ This is a simple tool to read and analyze black box data.
 def read_blackbox_file(file_buffer):
     df, data = rbbf(file_buffer)
     return df, data
+
+@st.cache_data(show_spinner=False)
+def read_trip_blackbox(file_buffer, trip_start_time, trip_end_time):
+    df = rtb(file_buffer, trip_start_time, trip_end_time)
+    return df
 
 def content(df,data):
     st.write("Blackbox's start and end.")
@@ -42,8 +50,8 @@ def content(df,data):
     # st.json(data)
     
     st.markdown("---")
-    
-blackbox_reader_tab, = st.tabs(["Blackbox Reader"])
+
+blackbox_reader_tab, trip_blackbox_reader = st.tabs(["Blackbox Reader", "Trip Blackbox Reader"])
 
 with blackbox_reader_tab:   
     uploaded_file = st.file_uploader("Upload a black box file", type=['xlsx'], accept_multiple_files=True)    
@@ -54,3 +62,39 @@ with blackbox_reader_tab:
             with st.spinner("Processing..."):
                 df, data = read_blackbox_file(file)
             content(df, data)
+
+with trip_blackbox_reader:   
+    max_files = 2
+    start_trip = st.text_input('Digite o Tempo de início da viagem (formato: HH:MM:SS)', key='trip_start_time' , value='23:50:00')
+    end_trip = st.text_input('Digite o Tempo de fim da viagem (formato: HH:MM:SS)', key='trip_end_time', value='23:59:59')
+    uploaded_file = st.file_uploader("Upload a trip blackbox file", type=['xlsx'], accept_multiple_files=True, )
+    if len(uploaded_file) > max_files:
+        st.warning(f"You can only upload up to {max_files} files at a time.")
+    else:           
+        uploaded_file.sort(key=lambda x: x.name)
+        if uploaded_file is not None and len(uploaded_file) == 1:
+            st.write(f'### Trip Info Blackbox: {uploaded_file[0].name.split(".")[0]}')
+            with st.spinner("Processing..."):
+                df = read_trip_blackbox(uploaded_file[0], start_trip, end_trip)
+            st.dataframe(df)
+            km_rodado = df["Odômetro"].iloc[-1] - df["Odômetro"].iloc[0]
+            st.write(f'Km rodado da viagem: {km_rodado:.2f} km')
+            st.markdown("---")
+        elif uploaded_file is not None and len(uploaded_file) == 2:
+            st.write(f'### Trip Info Blackbox: {uploaded_file[0].name.split(".")[0]}')
+            end_trip_aux = '23:59:59'
+            with st.spinner("Processing..."):
+                df = read_trip_blackbox(uploaded_file[0], start_trip, end_trip_aux)
+            st.dataframe(df)
+            km_rodado_trecho1 = df["Odômetro"].iloc[-1] - df["Odômetro"].iloc[0]
+            st.write(f'Km rodado do primeiro trecho: {km_rodado_trecho1:.2f} km')
+
+            st.write(f'### Trip Info Blackbox: {uploaded_file[1].name.split(".")[0]}')
+            start_trip = '00:00:00'
+            with st.spinner("Processing..."):
+                df2 = read_trip_blackbox(uploaded_file[1], start_trip, end_trip)
+            st.dataframe(df2)
+            km_rodado_trecho2 = df2["Odômetro"].iloc[-1] - df2["Odômetro"].iloc[0]
+            st.write(f'Km rodado do segundo trecho: {km_rodado_trecho2:.2f} km')
+            st.write(f'Total Km rodado: {km_rodado_trecho1 + km_rodado_trecho2:.2f} km')
+            st.markdown("---")
