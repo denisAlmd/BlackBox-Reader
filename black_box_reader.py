@@ -1,5 +1,6 @@
 from utils_pandas.read_blackbox_file import read_blackbox_file as rbbf
 from utils_pandas.read_trip_blackbox import read_trip_blackbox as rtb
+from utils_pandas.read_bdv_consolidado_file import read_bdv_consolidado_file as rbcf
 import streamlit as st
 
 from utils_pandas.read_trip_blackbox import read_trip_blackbox
@@ -51,7 +52,20 @@ def content(df,data):
     
     st.markdown("---")
 
-blackbox_reader_tab, trip_blackbox_reader = st.tabs(["Blackbox Reader", "Trip Blackbox Reader"])
+blackbox_reader_tab, trip_blackbox_reader, bdv_consolidado_reader = st.tabs(["Blackbox Reader", "Trip Blackbox Reader", "BDV Consolidado Reader"])
+
+with bdv_consolidado_reader:   
+    uploaded_file = st.file_uploader("Upload a BDV consolidado file", type=['xlsx'], accept_multiple_files=False)    
+    if uploaded_file is not None:
+        st.write(f'### BDV Consolidado: {uploaded_file.name.split(".")[0]}')
+        with st.spinner("Processing..."):
+            df = rbcf(uploaded_file)
+        if df is not None:
+            st.write("Data with anomalies:")
+            st.dataframe(df[['Data', "Organização",'Placa', 'Itinerários','Hora Saída', 'Hora Chegada', 'Tempo', 'Km Saída', 'Km Chegada', "Km Rodado", 'Matrícula', "Average Speed"]])
+        else:
+            st.error("No data corrupted in the file.")
+        st.markdown("---")
 
 with blackbox_reader_tab:   
     uploaded_file = st.file_uploader("Upload a black box file", type=['xlsx'], accept_multiple_files=True)    
