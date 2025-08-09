@@ -1,7 +1,8 @@
 from utils_pandas.read_blackbox_file import read_blackbox_file as rbbf
 from utils_pandas.read_trip_blackbox import read_trip_blackbox as rtb
-from utils_pandas.read_bdv_consolidado_file import read_bdv_consolidado_file as rbcf
+from utils_pandas.read_bdv_consolidado_file import filtered_bdv_consolidado as fbc
 import streamlit as st
+import io
 
 from utils_pandas.read_trip_blackbox import read_trip_blackbox
 
@@ -59,13 +60,39 @@ with bdv_consolidado_reader:
     if uploaded_file is not None:
         st.write(f'### BDV Consolidado: {uploaded_file.name.split(".")[0]}')
         with st.spinner("Processing..."):
-            df = rbcf(uploaded_file)
-        if df is not None:
-            st.write("Data with anomalies:")
-            st.dataframe(df[['Data', "Organização",'Placa', 'Itinerários','Hora Saída', 'Hora Chegada', 'Tempo', 'Km Saída', 'Km Chegada', "Km Rodado", 'Matrícula', "Average Speed"]])
+            df = fbc(uploaded_file)
+        if df is not None:            
+            default_columns = ['Data', 'Itinerários', 'Hora Chegada', 'Hora Saída', 'Tempo', 'Km Rodado', 'Velocidade média']
+
+            df_columns = df.columns.tolist()
+            
+            if 'Status' in df_columns:
+                default_columns.append('Status')
+
+            columns_to_display = st.multiselect(
+                "Select columns to display:",
+                options=df.columns.tolist(),
+                default=default_columns
+            )
+            
+            st.write("Filtered Data:")
+            st.write("Negative odometer or average speed greater than 90 km/h:")
+            st.dataframe(df[columns_to_display])
+
+            # Botão para baixar em Excel
+            output = io.BytesIO()
+            df[columns_to_display].to_excel(output, index=False, engine='openpyxl')
+            output.seek(0)
+            st.download_button(
+                label="Download Excel",
+                data=output,
+                file_name="filtered_data.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+            st.markdown("---")
         else:
-            st.error("No data corrupted in the file.")
-        st.markdown("---")
+            st.warning("No negative odometer or average speed greater than 90 km/h found in the file.")
 
 with blackbox_reader_tab:   
     uploaded_file = st.file_uploader("Upload a black box file", type=['xlsx'], accept_multiple_files=True)    
